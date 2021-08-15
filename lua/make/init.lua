@@ -1,16 +1,47 @@
-local floatwin = require "plenary.window.float"
 local Job = require "plenary.job"
+local tbl = require "plenary.tbl"
 local lfs = require "lfs"
 
-local config = {}
+local config = {
+  window = {
+    cursorcolumn = false,
+    percentage = 0.9,
+    relative = "editor",
+    style = "minimal",
+    winblend = 15,
+  },
+}
+local required_config_options = {
+  "exe",
+  "source_dir",
+  "binary_dir",
+  "build_type",
+  "build_parallelism",
+  "generator",
+}
 local context = {}
 
 local default_win_opts = function()
-  return floatwin.default_opts(config.window or {})
+  local options = config.window
+
+  local width = math.floor(vim.o.columns * options.percentage)
+  local height = math.floor(vim.o.lines * options.percentage)
+
+  local top = math.floor(((vim.o.lines - height) / 2) - 1)
+  local left = math.floor((vim.o.columns - width) / 2)
+
+  return {
+    relative = options.relative,
+    row = top,
+    col = left,
+    width = width,
+    height = height,
+    style = options.style,
+  }
 end
 
 local apply_default_win_opts = function(win_id)
-  vim.api.nvim_win_set_option(win_id, "cursorcolumn", false)
+  vim.api.nvim_win_set_option(win_id, "cursorcolumn", config.window.cursorcolumn)
   vim.api.nvim_win_set_option(win_id, "winblend", config.window.winblend)
 end
 
@@ -76,6 +107,7 @@ end
 --  * Filter identical error messages? Or *allow* the user to do so via some setup option
 --  * Provide a mechanism by which you can see the error context (e.g. "in file included from",
 --    template backtraces, etc)
+--  * Set the height of the quickfix popup in a manner similar to how we compute the window size
 local set_qf_list = function(open)
   local lines = vim.api.nvim_buf_get_lines(context.buffer, 0, -1, false)
   local list, count = filter_qf_list(vim.fn.getqflist { lines = lines })
@@ -92,6 +124,24 @@ local link_compile_commands = function()
   lfs.link(target, link_name, true)
 end
 
+local check_config_option = function(key)
+  if config[key] == nil then
+    print(string.format("[make.nvim] %s is a required configuration option", key))
+    return false
+  end
+  return true
+end
+
+local check_config = function()
+  local ok = true
+  for _, k in ipairs(required_config_options) do
+    if not check_config_option(k) then
+      ok = false
+    end
+  end
+  return ok
+end
+
 local M = {}
 
 M.au_winleave = function()
@@ -99,6 +149,9 @@ M.au_winleave = function()
 end
 
 M.generate = function()
+  if not check_config() then
+    return
+  end
   -- TODO: Per-project arguments
   local args = {
     "-S",
@@ -137,22 +190,14 @@ M.generate = function()
   job:start()
 
   open_win()
-end
 
-M.set_build_target = function(build_target)
-  config.build_target = build_target
-end
-
-M.set_build_type = function(build_type)
-  local previous_build_type = config.build_type
-  config.build_type = build_type
-  if previous_build_type ~= build_type then
-    config.binary_dir = config.source_dir .. "/build/" .. build_type
-    M.generate()
-  end
+  context.previous = job
 end
 
 M.compile = function(target)
+  if not check_config() then
+    return
+  end
   target = target or config.build_target
   -- TODO: Per-project arguments
   local args = {
@@ -192,10 +237,38 @@ M.compile = function(target)
 
   open_win()
 
-  config.previous = job
+  context.previous = job
+end
+
+M.clean = function()
+  if not check_config() then
+    return
+  end
+  if not os.remove(config.source_dir .. "/compile_commands.json") then
+    print "[make.nvim] failed to remove compile_commands.json"
+  end
+  if os.execute("rm -rf " .. config.binary_dir) ~= 0 then
+    print "[make.nvim] failed to remove build directory"
+  end
+end
+
+M.set_build_target = function(build_target)
+  config.build_target = build_target
+end
+
+M.set_build_type = function(build_type)
+  local previous_build_type = config.build_type
+  config.build_type = build_type
+  if previous_build_type ~= build_type then
+    config.binary_dir = config.source_dir .. "/build/" .. build_type
+    M.generate()
+  end
 end
 
 M.info = function()
+  if not check_config() then
+    return
+  end
   print(vim.inspect(config))
 end
 
