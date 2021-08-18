@@ -157,13 +157,13 @@ M.compile = function(opts)
     end,
     on_exit = function(self, _, code)
       if code ~= 0 then
-        show_notification(string.format("error building %s", options.target), "error", { title = "make.nvim" })
+        show_notification(string.format("error building %s", options.build_target), "error", { title = "make.nvim" })
         vim.schedule(function()
           set_qf_list(self, options.open_quickfix_on_error)
         end)
       else
         self:close()
-        show_notification(string.format("built %s successfully", options.target), "info", { title = "make.nvim" })
+        show_notification(string.format("built %s successfully", options.build_target), "info", { title = "make.nvim" })
       end
     end,
     close_on_exit = false,
