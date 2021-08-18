@@ -1,6 +1,6 @@
 # make.nvim
 
-Not *even* beta-level software :)
+Not _even_ beta-level software :)
 
 ```lua
 -- Using packer.nvim
@@ -17,18 +17,19 @@ use {
       build_parallelism = 16,
       generator = "Ninja",
       open_quickfix_on_error = true,
-      window = {
-        winblend = 15,
-        percentage = 0.9,
-      },
     }
   end,
-  requires = "nvim-lua/plenary.nvim",
+  requires = {
+    "nvim-lua/plenary.nvim",
+    "rcarriga/nvim-notify",
+    "akinsho/nvim-toggleterm.lua",
+  },
   rocks = "luafilesystem",
 }
 ```
 
 ```vim
 :lua require("make").generate()
-:lua require("make").compile("all")
+:lua require("make").compile({ build_target = "all" })
+:lua require("make").compile({ open_quickfix_on_error = false })
 ```
