@@ -85,7 +85,6 @@ M.generate = function(opts)
   if not check_config(options) then
     return
   end
-  -- TODO: Per-project arguments
   local args = {
     "-S",
     options.source_dir,
@@ -96,7 +95,7 @@ M.generate = function(opts)
     "-DCMAKE_BUILD_TYPE=" .. options.build_type,
     "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
   }
-  local user_args = options.cmake_arguments or {}
+  local user_args = options.generate_arguments or {}
   if #user_args > 1 then
     for _, i in ipairs(user_args) do
       args[#args + 1] = i
@@ -133,7 +132,6 @@ M.compile = function(opts)
   if not check_config(options) then
     return
   end
-  -- TODO: Per-project arguments
   local args = {
     "--build",
     options.binary_dir,
@@ -142,7 +140,7 @@ M.compile = function(opts)
     "--parallel",
     options.build_parallelism,
   }
-  local make_args = options.make_arguments or {}
+  local make_args = options.build_arguments or {}
   if #make_args > 1 then
     for _, i in ipairs(make_args) do
       args[#args + 1] = i
@@ -218,9 +216,12 @@ M.toggle = function()
   end
 end
 
--- TODO: Per-project configuration
 M.setup = function(opts)
   config = vim.tbl_deep_extend("force", config, opts)
+  local ok, generator = pcall(require, "makerc")
+  if ok then
+    config = vim.tbl_deep_extend("force", config, generator(config))
+  end
 end
 
 return M

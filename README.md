@@ -33,3 +33,13 @@ use {
 :lua require("make").compile({ build_target = "all" })
 :lua require("make").compile({ open_quickfix_on_error = false })
 ```
+
+```lua
+-- makerc.lua (per project configuration, in the project root)
+return function(options)
+  return {
+    generate_arguments = { "-DCMAKE_INSTALL_PREFIX=" .. options.source_dir .. "/install" },
+    build_arguments = { "--", "--debug" }
+  }
+end
+```
