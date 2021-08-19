@@ -108,7 +108,7 @@ M.generate = function(opts)
     "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
   }
   local user_args = options.generate_arguments or {}
-  if #user_args > 1 then
+  if #user_args > 0 then
     for _, i in ipairs(user_args) do
       args[#args + 1] = i
     end
@@ -158,7 +158,7 @@ M.compile = function(opts)
     options.build_parallelism,
   }
   local make_args = options.build_arguments or {}
-  if #make_args > 1 then
+  if #make_args > 0 then
     for _, i in ipairs(make_args) do
       args[#args + 1] = i
     end
