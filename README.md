@@ -5,7 +5,7 @@ Not _even_ beta-level software :)
 ```lua
 -- Using packer.nvim
 use {
-  "make.nvim",
+  "willruggiano/make.nvim",
   config = function()
     local cwd = vim.fn.getcwd()
     require("make").setup {
