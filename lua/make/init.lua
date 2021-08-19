@@ -2,7 +2,19 @@ local lfs = require "lfs"
 local has_notify, notify = pcall(require, "notify")
 local Terminal = require("toggleterm.terminal").Terminal
 
-local config = {}
+local config = {
+  -- NOTE: See akinsho/nvim-toggleterm.lua for term options
+  term = {
+    direction = "float",
+    float_opts = {
+      winblend = 3,
+      highlights = {
+        background = "Normal",
+        border = "Normal",
+      },
+    },
+  },
+}
 local required_config_options = {
   "exe",
   "source_dir",
@@ -119,7 +131,8 @@ M.generate = function(opts)
       end
     end,
     close_on_exit = false,
-    direction = "float",
+    direction = options.term.direction,
+    float_opts = options.term.float_opts,
     hidden = true,
     start_in_insert = false,
   }
@@ -130,6 +143,10 @@ end
 M.compile = function(opts)
   local options = override_config(opts)
   if not check_config(options) then
+    return
+  end
+  if vim.fn.isdirectory(options.binary_dir) == 0 then
+    show_notification("you must run generate() before compile()", "error", { title = "make.nvim" })
     return
   end
   local args = {
@@ -165,7 +182,8 @@ M.compile = function(opts)
       end
     end,
     close_on_exit = false,
-    direction = "float",
+    direction = options.term.direction,
+    float_opts = options.term.float_opts,
     hidden = true,
     start_in_insert = false,
   }
