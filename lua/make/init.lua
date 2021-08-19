@@ -26,7 +26,7 @@ local filter_qf_list = function(list)
   local items = {}
   for _, e in ipairs(list.items) do
     if e.valid == 1 then
-      table.insert(items, e)
+      items[#items + 1] = e
     end
   end
   list.items = items
