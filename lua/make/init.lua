@@ -224,13 +224,17 @@ M.info = function()
 end
 
 M.toggle = function()
-  local term = context.term
+  local term = context.previous
   -- TODO: Figure out how to toggle. Currently, toggling will re-execute the cmd we created the
   -- Terminal with.
   if not term then
-    show_notification("toggling the make terminal open is not currently supported", "error", { title = "make.nvim" })
+    show_notification(
+      "no previous terminal to toggle, run generate() or compile() first",
+      "error",
+      { title = "make.nvim" }
+    )
   else
-    show_notification("toggling the make terminal closed is not currently supported", "error", { title = "make.nvim" })
+    term:toggle()
   end
 end
 
