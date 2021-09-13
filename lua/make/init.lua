@@ -3,6 +3,12 @@ local has_notify, notify = pcall(require, "notify")
 local Terminal = require("toggleterm.terminal").Terminal
 
 local config = {
+  -- The CMake command to run
+  exe = "cmake",
+  -- Whether to open the quickfix window on build failure
+  open_quickfix_on_error = true,
+  -- The command to use to open the quickfix window
+  quickfix_command = "botright cwindow",
   -- NOTE: See akinsho/nvim-toggleterm.lua for term options
   term = {
     direction = "float",
@@ -34,39 +40,6 @@ local show_notification = function(...)
   end
 end
 
-local filter_qf_list = function(list)
-  local items = {}
-  for _, e in ipairs(list.items) do
-    if e.valid == 1 then
-      items[#items + 1] = e
-    end
-  end
-  list.items = items
-  return list, #items
-end
-
--- TODO: A couple things.
---  * Filter identical error messages? Or *allow* the user to do so via some setup option
---  * Provide a mechanism by which you can see the error context (e.g. "in file included from",
---    template backtraces, etc)
---  * Set the height of the quickfix popup in a manner similar to how we compute the window size
-local set_qf_list = function(term, open)
-  local lines = vim.api.nvim_buf_get_lines(term.bufnr, 0, -1, false)
-  local list, count = filter_qf_list(vim.fn.getqflist { lines = lines })
-  show_notification("added " .. count .. " items to the quickfix list", "info", { title = "make.nvim" })
-  vim.fn.setqflist({}, " ", list)
-  if open == true then
-    term:close()
-    vim.cmd "copen"
-  end
-end
-
-local link_compile_commands = function()
-  local target = config.binary_dir .. "/compile_commands.json"
-  local link_name = config.source_dir .. "/compile_commands.json"
-  lfs.link(target, link_name, true)
-end
-
 local check_config_option = function(cfg, key)
   if cfg[key] == nil then
     show_notification(string.format("%s is a required configuration option", key), "error", { title = "make.nvim" })
@@ -88,6 +61,40 @@ end
 
 local override_config = function(opts)
   return vim.tbl_deep_extend("force", config, opts or {})
+end
+
+local filter_qf_list = function(list)
+  local items = {}
+  for _, e in ipairs(list.items) do
+    if e.valid == 1 then
+      items[#items + 1] = e
+    end
+  end
+  list.items = items
+  return list, #items
+end
+
+-- TODO: A couple things.
+--  * Filter identical error messages? Or *allow* the user to do so via some setup option
+--  * Provide a mechanism by which you can see the error context (e.g. "in file included from",
+--    template backtraces, etc)
+--  * Set the height of the quickfix popup in a manner similar to how we compute the window size
+local set_qf_list = function(term, open)
+  check_config_option(config, "quickfix_command")
+  local lines = vim.api.nvim_buf_get_lines(term.bufnr, 0, -1, false)
+  local list, count = filter_qf_list(vim.fn.getqflist { lines = lines })
+  show_notification("added " .. count .. " items to the quickfix list", "info", { title = "make.nvim" })
+  vim.fn.setqflist({}, " ", list)
+  if open == true then
+    term:close()
+    vim.cmd(config.quickfix_command)
+  end
+end
+
+local link_compile_commands = function()
+  local target = config.binary_dir .. "/compile_commands.json"
+  local link_name = config.source_dir .. "/compile_commands.json"
+  lfs.link(target, link_name, true)
 end
 
 local M = {}

@@ -9,14 +9,36 @@ use {
   config = function()
     local cwd = vim.fn.getcwd()
     require("make").setup {
-      exe = "cmake",
+      -- The argument passed to cmake via -S
       source_dir = cwd,
+      -- The argument passed to cmake via -B
       binary_dir = cwd .. "/build/Debug",
+      -- The argument passed to cmake via -DCMAKE_BUILD_TYPE
       build_type = "Debug",
-      build_target = "all",
-      build_parallelism = 16,
+      -- The argument passed to cmake via -G
       generator = "Ninja",
+
+      -- The argument passed to cmake via --target
+      build_target = "all",
+      -- The argument passed to cmake via --parallel
+      build_parallelism = 16,
+
+      -- The path to the CMake executable
+      exe = "cmake",
+      -- Additional arguments passed to cmake when generating the buildsystem
+      generate_arguments = { "-DENABLE_SOMETHING=ON", },
+      -- Additional arguments passed to cmake when building the project
+      build_arguments = {
+        -- You can pass CMake arguments
+        "--config RelWithDebInfo",
+        -- and/or native build options (after a "--")
+        "--",
+        "--debug"  -- for GNU make
+      },
+      -- Whether to open a quickfix window when compilation/linking fails
       open_quickfix_on_error = true,
+      -- The command to use to open the quickfix window
+      quickfix_command = "botright cwindow",
     }
   end,
   requires = {
@@ -29,17 +51,34 @@ use {
 ```
 
 ```vim
+" Runs cmake -S <source_dir> -B <binary_dir> -DCMAKE_BUILD_TYPE=<build_type> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 :lua require("make").generate()
+" Runs cmake --build <binary_dir> --target all --parellel <build_parallelism>
 :lua require("make").compile({ build_target = "all" })
+" Ditto, but does not open the quickfix window if the build fails
 :lua require("make").compile({ open_quickfix_on_error = false })
+" Toggles the terminal window used to run cmake command
+:lua require("make").toggle()
+" Shows the current make configuration (i.e. options passed to setup(...)) in a popup window
+:lua require("make").info()
+" Unlinks compile_commands.json and `rm -rf` the binary_dir
+:lua require("make").clean()
+" Changes the build_type
+:lua require("make").set_build_type("RelWithDebInfo")
+" Changes the build_target
+:lua require("make").set_build_target("test")
 ```
+
+See [willruggiano/dotfiles#after/plugin/make.lua](https://github.com/willruggiano/dotfiles/blob/main/home/neovim/config/after/plugin/make.lua)
 
 ```lua
 -- makerc.lua (per project configuration, in the project root)
-return function(options)
+return function(options) -- `options` is whatever was configured via setup(...)
+  local cwd = vim.fn.getcwd()
   return {
-    generate_arguments = { "-DCMAKE_INSTALL_PREFIX=" .. options.source_dir .. "/install" },
-    build_arguments = { "--", "--debug" }
+    source_dir = cwd,
+    binary_dir = cwd .. "/build/Debug",
+    build_type = "Debug",
   }
 end
 ```
