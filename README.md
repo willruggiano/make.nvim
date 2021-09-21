@@ -61,6 +61,10 @@ use {
 :lua require("make").toggle()
 " Shows the current make configuration (i.e. options passed to setup(...)) in a popup window
 :lua require("make").info()
+" Prints the exit code of the most recent make invocation
+:lua require("make").status()
+" Returns the current make configuration
+:lua require("make").config()
 " Unlinks compile_commands.json and `rm -rf` the binary_dir
 :lua require("make").clean()
 " Changes the build_type
@@ -69,16 +73,13 @@ use {
 :lua require("make").set_build_target("test")
 ```
 
-See [willruggiano/dotfiles#after/plugin/make.lua](https://github.com/willruggiano/dotfiles/blob/main/home/neovim/config/after/plugin/make.lua)
+See [willruggiano/dotfiles#after/plugin/make.lua](https://github.com/willruggiano/dotfiles/blob/main/.config/nvim/after/plugin/make.lua)
 
 ```lua
 -- makerc.lua (per project configuration, in the project root)
 return function(options) -- `options` is whatever was configured via setup(...)
-  local cwd = vim.fn.getcwd()
   return {
-    source_dir = cwd,
-    binary_dir = cwd .. "/build/Debug",
-    build_type = "Debug",
+    -- See above for options that can be passed to setup({...})
   }
 end
 ```

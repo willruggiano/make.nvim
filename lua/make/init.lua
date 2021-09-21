@@ -136,6 +136,7 @@ M.generate = function(opts)
         self:toggle()
         show_notification(":MakeGenerate succeeded!", "info", { title = "make.nvim" })
       end
+      context.status = code
     end,
     close_on_exit = false,
     direction = options.term.direction,
@@ -187,6 +188,7 @@ M.compile = function(opts)
         self:close()
         show_notification(string.format("built %s successfully", options.build_target), "info", { title = "make.nvim" })
       end
+      context.status = code
     end,
     close_on_exit = false,
     direction = options.term.direction,
@@ -228,6 +230,16 @@ M.info = function()
     return
   end
   print(vim.inspect(config))
+end
+
+M.status = function()
+  if context.status ~= nil then
+    print("Last job exited with status:", context.status)
+  end
+end
+
+M.config = function()
+  return config
 end
 
 M.toggle = function()
