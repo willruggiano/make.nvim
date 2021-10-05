@@ -2,9 +2,11 @@ local lfs = require "lfs"
 local has_notify, notify = pcall(require, "notify")
 local Terminal = require("toggleterm.terminal").Terminal
 
-local config = {
+local defaults = {
   -- The CMake command to run
   exe = "cmake",
+  -- Whether to (re)generate the buildsystem after switching profiles
+  generate_after_profile_switch = true,
   -- Whether to open the quickfix window on build failure
   open_quickfix_on_error = true,
   -- The command to use to open the quickfix window
@@ -29,6 +31,9 @@ local required_config_options = {
   "build_parallelism",
   "generator",
 }
+
+local config = {}
+local current = {}
 local context = {}
 
 local show_notification = function(...)
@@ -49,7 +54,7 @@ local check_config_option = function(cfg, key)
 end
 
 local check_config = function(cfg)
-  cfg = cfg or config
+  cfg = cfg or current
   local ok = true
   for _, k in ipairs(required_config_options) do
     if not check_config_option(cfg, k) then
@@ -60,7 +65,7 @@ local check_config = function(cfg)
 end
 
 local override_config = function(opts)
-  return vim.tbl_deep_extend("force", config, opts or {})
+  return vim.tbl_deep_extend("force", current, opts or {})
 end
 
 local filter_qf_list = function(list)
@@ -80,20 +85,23 @@ end
 --    template backtraces, etc)
 --  * Set the height of the quickfix popup in a manner similar to how we compute the window size
 local set_qf_list = function(term, open)
-  check_config_option(config, "quickfix_command")
+  check_config_option(current, "quickfix_command")
   local lines = vim.api.nvim_buf_get_lines(term.bufnr, 0, -1, false)
   local list, count = filter_qf_list(vim.fn.getqflist { lines = lines })
   show_notification("added " .. count .. " items to the quickfix list", "info", { title = "make.nvim" })
   vim.fn.setqflist({}, " ", list)
   if open == true then
     term:close()
-    vim.cmd(config.quickfix_command)
+    vim.cmd(current.quickfix_command)
   end
 end
 
-local link_compile_commands = function()
-  local target = config.binary_dir .. "/compile_commands.json"
-  local link_name = config.source_dir .. "/compile_commands.json"
+local link_compile_commands = function(overwrite)
+  local target = current.binary_dir .. "/compile_commands.json"
+  local link_name = current.source_dir .. "/compile_commands.json"
+  if overwrite then
+    os.remove(link_name)
+  end
   lfs.link(target, link_name, true)
 end
 
@@ -132,7 +140,7 @@ M.generate = function(opts)
           { title = "make.nvim" }
         )
       else
-        link_compile_commands()
+        link_compile_commands(true)
         self:toggle()
         show_notification(":MakeGenerate succeeded!", "info", { title = "make.nvim" })
       end
@@ -204,7 +212,7 @@ M.clean = function()
   if not check_config() then
     return
   end
-  if not os.remove(config.source_dir .. "/compile_commands.json") then
+  if not os.remove(current.source_dir .. "/compile_commands.json") then
     show_notification("failed to remove compile_commands.json", "error", { title = "make.nvim" })
   end
   if os.execute("rm -rf " .. config.binary_dir) ~= 0 then
@@ -213,23 +221,39 @@ M.clean = function()
 end
 
 M.set_build_target = function(build_target)
-  config.build_target = build_target
+  current = override_config { build_target = build_target }
 end
 
 M.set_build_type = function(build_type)
-  local previous_build_type = config.build_type
-  config.build_type = build_type
+  local previous_build_type = current.build_type
   if previous_build_type ~= build_type then
-    config.binary_dir = config.source_dir .. "/build/" .. build_type
+    override_config {
+      binary_dir = current.source_dir .. "/build/" .. build_type,
+      build_type = build_type,
+    }
     M.generate()
   end
+end
+
+M.show_profile = function(name)
+  local profile = config[name]
+  if profile ~= nil then
+    print(vim.inspect(profile))
+  end
+end
+
+M.switch_profile = function(opts)
+  local profile = config[opts.profile]
+  assert(profile ~= nil, "profile does not exist")
+  current = override_config(profile)
+  M.generate()
 end
 
 M.info = function()
   if not check_config() then
     return
   end
-  print(vim.inspect(config))
+  print(vim.inspect(current))
 end
 
 M.status = function()
@@ -240,6 +264,10 @@ end
 
 M.config = function()
   return config
+end
+
+M.active = function()
+  return current
 end
 
 M.toggle = function()
@@ -258,11 +286,13 @@ M.toggle = function()
 end
 
 M.setup = function(opts)
-  config = vim.tbl_deep_extend("force", config, opts)
+  local default_profile = opts.default_profile or "default"
+  config = vim.tbl_deep_extend("force", { [default_profile] = defaults }, opts)
   local ok, generator = pcall(require, "makerc")
   if ok then
     config = vim.tbl_deep_extend("force", config, generator(config))
   end
+  current = config[default_profile]
 end
 
 return M
