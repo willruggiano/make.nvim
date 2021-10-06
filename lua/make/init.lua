@@ -223,7 +223,7 @@ M.clean = function()
   if not os.remove(current.source_dir .. "/compile_commands.json") then
     show_notification("failed to remove compile_commands.json", "error", { title = "make.nvim" })
   end
-  if os.execute("rm -rf " .. config.binary_dir) ~= 0 then
+  if os.execute("rm -rf " .. current.binary_dir) ~= 0 then
     show_notification("failed to remove build directory", "error", { title = "make.nvim" })
   end
 end
