@@ -105,6 +105,14 @@ local link_compile_commands = function(overwrite)
   lfs.link(target, link_name, true)
 end
 
+local load_makerc = function()
+  local package_path = package.path
+  package.path = "?.lua"
+  local ok, makerc = pcall(require, "makerc")
+  package.path = package_path
+  return ok, makerc
+end
+
 local M = {}
 
 M.generate = function(opts)
@@ -227,8 +235,8 @@ end
 M.set_build_type = function(build_type)
   local previous_build_type = current.build_type
   if previous_build_type ~= build_type then
-    override_config {
-      binary_dir = current.source_dir .. "/build/" .. build_type,
+    current = override_config {
+      binary_dir = string.gsub(current.binary_dir, previous_build_type, build_type),
       build_type = build_type,
     }
     M.generate()
@@ -288,7 +296,7 @@ end
 M.setup = function(opts)
   local default_profile = opts.default_profile or "default"
   config = vim.tbl_deep_extend("force", { [default_profile] = defaults }, opts)
-  local ok, generator = pcall(require, "makerc")
+  local ok, generator = load_makerc()
   if ok then
     config = vim.tbl_deep_extend("force", config, generator(config))
   end
