@@ -115,7 +115,7 @@ end
 
 local M = {}
 
-M.generate = function(opts)
+M.generate = function(opts, force)
   local options = override_config(opts)
   if not check_config(options) then
     return
@@ -135,6 +135,10 @@ M.generate = function(opts)
     for _, i in ipairs(user_args) do
       args[#args + 1] = i
     end
+  end
+
+  if force then
+    os.execute("rm " .. options.binary_dir .. "/CMakeCache.txt")
   end
 
   local term = Terminal:new {

@@ -79,7 +79,7 @@ use {
 :lua require("make").show_profile("debug")
 ```
 
-See [willruggiano/dotfiles#after/plugin/make.lua](https://github.com/willruggiano/dotfiles/blob/main/.config/nvim/after/plugin/make.lua)
+See [willruggiano/dotfiles#make.lua](https://github.com/willruggiano/dotfiles/blob/main/.config/nvim/lua/bombadil/config/make.lua)
 
 ```lua
 -- makerc.lua (per project configuration, in the project root)
