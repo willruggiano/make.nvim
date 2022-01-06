@@ -1,6 +1,6 @@
 local lfs = require "lfs"
 local has_notify, notify = pcall(require, "notify")
-local Terminal = require("toggleterm.terminal").Terminal
+local job_ctrl = require "firvish.job_control"
 
 local defaults = {
   -- The CMake command to run
@@ -11,17 +11,6 @@ local defaults = {
   open_quickfix_on_error = true,
   -- The command to use to open the quickfix window
   quickfix_command = "botright cwindow",
-  -- NOTE: See akinsho/nvim-toggleterm.lua for term options
-  term = {
-    direction = "float",
-    float_opts = {
-      winblend = 3,
-      highlights = {
-        background = "Normal",
-        border = "Normal",
-      },
-    },
-  },
 }
 local required_config_options = {
   "exe",
@@ -120,7 +109,8 @@ M.generate = function(opts, force)
   if not check_config(options) then
     return
   end
-  local args = {
+  local cmd = {
+    options.exe,
     "-S",
     options.source_dir,
     "-B",
@@ -133,7 +123,7 @@ M.generate = function(opts, force)
   local user_args = options.generate_arguments or {}
   if #user_args > 0 then
     for _, i in ipairs(user_args) do
-      args[#args + 1] = i
+      cmd[#cmd + 1] = i
     end
   end
 
@@ -141,31 +131,15 @@ M.generate = function(opts, force)
     os.execute("rm " .. options.binary_dir .. "/CMakeCache.txt")
   end
 
-  local term = Terminal:new {
-    cmd = options.exe .. " " .. table.concat(args, " "),
-    dir = options.source_dir,
-    on_exit = function(self, _, code, signal)
-      if code ~= 0 then
-        show_notification(
-          string.format(":MakeGenerate failed! [c:%s,s:%s]", code, signal),
-          "error",
-          { title = "make.nvim" }
-        )
-      else
-        link_compile_commands(true)
-        self:toggle()
-        show_notification(":MakeGenerate succeeded!", "info", { title = "make.nvim" })
-      end
-      context.status = code
-    end,
-    close_on_exit = false,
-    direction = options.term.direction,
-    float_opts = options.term.float_opts,
-    hidden = true,
-    start_in_insert = false,
+  job_ctrl.start_job {
+    cmd = cmd,
+    filetype = "log",
+    title = "cmake-generate",
+    listed = true,
+    output_qf = true,
+    is_background_job = false,
+    cwd = vim.fn.getcwd(),
   }
-  term:toggle()
-  context.previous = term
 end
 
 M.compile = function(opts)
@@ -177,7 +151,8 @@ M.compile = function(opts)
     show_notification("you must run generate() before compile()", "error", { title = "make.nvim" })
     return
   end
-  local args = {
+  local cmd = {
+    options.exe,
     "--build",
     options.binary_dir,
     "--target",
@@ -188,36 +163,19 @@ M.compile = function(opts)
   local make_args = options.build_arguments or {}
   if #make_args > 0 then
     for _, i in ipairs(make_args) do
-      args[#args + 1] = i
+      cmd[#cmd + 1] = i
     end
   end
 
-  local term = Terminal:new {
-    cmd = options.exe .. " " .. table.concat(args, " "),
-    dir = options.source_dir,
-    on_open = function()
-      vim.cmd "cclose"
-    end,
-    on_exit = function(self, _, code)
-      if code ~= 0 then
-        show_notification(string.format("error building %s", options.build_target), "error", { title = "make.nvim" })
-        vim.schedule(function()
-          set_qf_list(self, options.open_quickfix_on_error)
-        end)
-      else
-        self:close()
-        show_notification(string.format("built %s successfully", options.build_target), "info", { title = "make.nvim" })
-      end
-      context.status = code
-    end,
-    close_on_exit = false,
-    direction = options.term.direction,
-    float_opts = options.term.float_opts,
-    hidden = true,
-    start_in_insert = false,
+  job_ctrl.start_job {
+    cmd = cmd,
+    filetype = "log",
+    title = "cmake-build",
+    listed = true,
+    output_qf = true,
+    is_background_job = false,
+    cwd = vim.fn.getcwd(),
   }
-  term:toggle()
-  context.previous = term
 end
 
 M.clean = function()
@@ -283,18 +241,11 @@ M.active = function()
 end
 
 M.toggle = function()
-  local term = context.previous
-  -- TODO: Figure out how to toggle. Currently, toggling will re-execute the cmd we created the
-  -- Terminal with.
-  if not term then
-    show_notification(
-      "no previous terminal to toggle, run generate() or compile() first",
-      "error",
-      { title = "make.nvim" }
-    )
-  else
-    term:toggle()
-  end
+  show_notification(
+    "make.toggle() is deprecated. Please use firvish's job-list instead",
+    "error",
+    { title = "make.nvim" }
+  )
 end
 
 M.setup = function(opts)

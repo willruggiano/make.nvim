@@ -46,7 +46,7 @@ use {
   requires = {
     "nvim-lua/plenary.nvim",
     "rcarriga/nvim-notify",
-    "akinsho/nvim-toggleterm.lua",
+    "Furkanzmc/firvish.nvim",
   },
   rocks = "luafilesystem",
 }
