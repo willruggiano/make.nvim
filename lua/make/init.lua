@@ -108,6 +108,11 @@ M.generate = function(opts, force)
     filetype = "log",
     title = "cmake-generate",
     listed = true,
+    on_exit = function(_, exit_code, _)
+      if exit_code == 0 then
+        link_compile_commands()
+      end
+    end,
     output_qf = true,
     is_background_job = false,
     cwd = vim.fn.getcwd(),
