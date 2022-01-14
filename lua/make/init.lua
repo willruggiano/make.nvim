@@ -57,34 +57,6 @@ local override_config = function(opts)
   return vim.tbl_deep_extend("force", current, opts or {})
 end
 
-local filter_qf_list = function(list)
-  local items = {}
-  for _, e in ipairs(list.items) do
-    if e.valid == 1 then
-      items[#items + 1] = e
-    end
-  end
-  list.items = items
-  return list, #items
-end
-
--- TODO: A couple things.
---  * Filter identical error messages? Or *allow* the user to do so via some setup option
---  * Provide a mechanism by which you can see the error context (e.g. "in file included from",
---    template backtraces, etc)
---  * Set the height of the quickfix popup in a manner similar to how we compute the window size
-local set_qf_list = function(term, open)
-  check_config_option(current, "quickfix_command")
-  local lines = vim.api.nvim_buf_get_lines(term.bufnr, 0, -1, false)
-  local list, count = filter_qf_list(vim.fn.getqflist { lines = lines })
-  show_notification("added " .. count .. " items to the quickfix list", "info", { title = "make.nvim" })
-  vim.fn.setqflist({}, " ", list)
-  if open == true then
-    term:close()
-    vim.cmd(current.quickfix_command)
-  end
-end
-
 local link_compile_commands = function(overwrite)
   local target = current.binary_dir .. "/compile_commands.json"
   local link_name = current.source_dir .. "/compile_commands.json"
@@ -141,6 +113,8 @@ M.generate = function(opts, force)
     cwd = vim.fn.getcwd(),
   }
 end
+
+M.link_compile_commands = link_compile_commands
 
 M.compile = function(opts)
   local options = override_config(opts)
