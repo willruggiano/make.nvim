@@ -98,8 +98,10 @@ M.generate = function(opts, force)
   local cmd = {
     options.exe,
     "-S",
-    source_dir "-B",
-    binary_dir "-G",
+    source_dir,
+    "-B",
+    binary_dir,
+    "-G",
     options.generator,
     "-DCMAKE_BUILD_TYPE=" .. options.build_type,
     "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
