@@ -3,6 +3,8 @@ local has_notify, notify = pcall(require, "notify")
 local job_ctrl = require "firvish.job_control"
 
 local defaults = {
+  -- The working directory in which to run cmake
+  cwd = vim.fn.getcwd(),
   -- The CMake command to run
   exe = "cmake",
   -- Whether to (re)generate the buildsystem after switching profiles
@@ -57,9 +59,19 @@ local override_config = function(opts)
   return vim.tbl_deep_extend("force", current, opts or {})
 end
 
+local resolve_directory = function(relative, basedir, path)
+  if relative then
+    return basedir .. "/" .. path
+  else
+    return path
+  end
+end
+
 local link_compile_commands = function(overwrite)
-  local target = current.binary_dir .. "/compile_commands.json"
-  local link_name = current.source_dir .. "/compile_commands.json"
+  local binary_dir = resolve_directory(current.relative_to_cwd, current.cwd, current.binary_dir)
+  local source_dir = resolve_directory(current.relative_to_cwd, current.cwd, current.source_dir)
+  local target = binary_dir .. "/compile_commands.json"
+  local link_name = source_dir .. "/compile_commands.json"
   if overwrite then
     os.remove(link_name)
   end
@@ -81,13 +93,13 @@ M.generate = function(opts, force)
   if not check_config(options) then
     return
   end
+  local binary_dir = resolve_directory(options.relative_to_cwd, options.cwd, options.binary_dir)
+  local source_dir = resolve_directory(options.relative_to_cwd, options.cwd, options.source_dir)
   local cmd = {
     options.exe,
     "-S",
-    options.source_dir,
-    "-B",
-    options.binary_dir,
-    "-G",
+    source_dir "-B",
+    binary_dir "-G",
     options.generator,
     "-DCMAKE_BUILD_TYPE=" .. options.build_type,
     "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
@@ -100,7 +112,7 @@ M.generate = function(opts, force)
   end
 
   if force then
-    os.execute("rm " .. options.binary_dir .. "/CMakeCache.txt")
+    os.execute("rm " .. binary_dir .. "/CMakeCache.txt")
   end
 
   job_ctrl.start_job {
@@ -115,25 +127,26 @@ M.generate = function(opts, force)
     end,
     output_qf = true,
     is_background_job = false,
-    cwd = vim.fn.getcwd(),
+    cwd = options.cwd,
   }
 end
 
 M.link_compile_commands = link_compile_commands
 
-M.compile = function(opts)
+M.compile = function(opts, background)
   local options = override_config(opts)
   if not check_config(options) then
     return
   end
-  if vim.fn.isdirectory(options.binary_dir) == 0 then
+  local binary_dir = resolve_directory(options.relative_to_cwd, options.cwd, options.binary_dir)
+  if vim.fn.isdirectory(binary_dir) == 0 then
     show_notification("you must run generate() before compile()", "error", { title = "make.nvim" })
     return
   end
   local cmd = {
     options.exe,
     "--build",
-    options.binary_dir,
+    binary_dir,
     "--target",
     options.build_target,
     "--parallel",
@@ -152,8 +165,9 @@ M.compile = function(opts)
     title = "cmake-build",
     listed = true,
     output_qf = true,
-    is_background_job = false,
-    cwd = vim.fn.getcwd(),
+    open_qf = background or false,
+    is_background_job = background or false,
+    cwd = options.cwd,
   }
 end
 
@@ -161,10 +175,12 @@ M.clean = function()
   if not check_config() then
     return
   end
-  if not os.remove(current.source_dir .. "/compile_commands.json") then
+  local binary_dir = resolve_directory(current.relative_to_cwd, current.cwd, current.binary_dir)
+  local source_dir = resolve_directory(current.relative_to_cwd, current.cwd, current.source_dir)
+  if not os.remove(source_dir .. "/compile_commands.json") then
     show_notification("failed to remove compile_commands.json", "error", { title = "make.nvim" })
   end
-  if os.execute("rm -rf " .. current.binary_dir) ~= 0 then
+  if os.execute("rm -rf " .. binary_dir) ~= 0 then
     show_notification("failed to remove build directory", "error", { title = "make.nvim" })
   end
 end
